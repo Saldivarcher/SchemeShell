@@ -1,13 +1,31 @@
 #include "scheme.h"
 
+Shell::Shell() {
+    this->_true = std::make_unique<scheme_object>();
+    _true->type = scheme_object::BOOLEAN;
+    _true->data.boolean.value = true;  
+
+    this->_false = std::make_unique<scheme_object>();
+    _false->type = scheme_object::BOOLEAN;
+    _false->data.boolean.value = true;  
+}
+
 bool Shell::is_fixnum(std::unique_ptr<scheme_object> obj) {
-    return obj->type == FIXNUM;
+    return obj->type == scheme_object::FIXNUM;
 }
 
 bool Shell::is_delimiter(int c) {
     return std::isspace(c) || c == EOF 
            || c == '(' || c == ')'
            || c == '"' || c == ';';
+}
+
+bool Shell::is_boolean(std::unique_ptr<scheme_object> obj) {
+    return obj->type == scheme_object::BOOLEAN;
+}
+
+bool Shell::is_false(std::unique_ptr<scheme_object> obj) {
+    return obj == this->_false;
 }
 
 int Shell::peek(std::FILE* in) {
@@ -33,7 +51,7 @@ void Shell::eat_whitespace(std::FILE* in) {
 
 std::unique_ptr<scheme_object> Shell::make_fixnum(long num) {
     auto obj = std::make_unique<scheme_object>();
-    obj->type = FIXNUM;
+    obj->type = scheme_object::FIXNUM;
     obj->data.fixnum.value = num;
     return obj;
 }
@@ -45,6 +63,18 @@ std::unique_ptr<scheme_object> Shell::read(std::FILE* in) {
     eat_whitespace(in);
 
     c = std::getc(in);
+    if (c == '#') {
+        c = std::getc(in);
+        switch(c) {
+            case 't':
+                return this->_true;
+            case 'f':
+                return this->_false;
+            default:
+                std::cerr << "unknown boolean literal\n";
+                exit(1);
+        }
+    }
     if (std::isdigit(c) || (c == '-' && (std::isdigit(peek(in))))) {
         if (c == '-') sign = -1;
         else std::ungetc(c, in);
@@ -67,9 +97,13 @@ std::unique_ptr<scheme_object> Shell::eval(std::unique_ptr<scheme_object> expres
     return expression;
 }
 
+
 void Shell::write(std::unique_ptr<scheme_object> obj) {
     switch (obj->type) {
-        case FIXNUM:
+        case scheme_object::BOOLEAN:
+            std::cout << "#" << is_false(obj) ? 'f': 't';
+            break;
+        case scheme_object::FIXNUM:
             std::cout << obj->data.fixnum.value;
             break;
         default:
