@@ -1,13 +1,6 @@
 #include "scheme.h"
 
 Shell::Shell() {
-    this->_true = std::make_unique<scheme_object>();
-    _true->type = scheme_object::BOOLEAN;
-    _true->data.boolean.value = true;  
-
-    this->_false = std::make_unique<scheme_object>();
-    _false->type = scheme_object::BOOLEAN;
-    _false->data.boolean.value = true;  
 }
 
 bool Shell::is_fixnum(std::unique_ptr<scheme_object> obj) {
@@ -25,13 +18,13 @@ bool Shell::is_boolean(std::unique_ptr<scheme_object> obj) {
 }
 
 bool Shell::is_false(std::unique_ptr<scheme_object> obj) {
-    return obj == this->_false;
+    return obj->boolean == false;
 }
 
 int Shell::peek(std::FILE* in) {
     int c;
     c = std::getc(in);
-    ungetc(c, in);
+    std::ungetc(c, in);
     return c;
 }
 
@@ -49,10 +42,17 @@ void Shell::eat_whitespace(std::FILE* in) {
     }
 }
 
+std::unique_ptr<scheme_object> Shell::make_bool(bool val) {
+    auto obj = std::make_unique<scheme_object>();
+    obj->type = scheme_object::BOOLEAN;
+    obj->boolean = val;
+    return obj;
+}
+
 std::unique_ptr<scheme_object> Shell::make_fixnum(long num) {
     auto obj = std::make_unique<scheme_object>();
     obj->type = scheme_object::FIXNUM;
-    obj->data.fixnum.value = num;
+    obj->fixnum= num;
     return obj;
 }
 
@@ -67,9 +67,9 @@ std::unique_ptr<scheme_object> Shell::read(std::FILE* in) {
         c = std::getc(in);
         switch(c) {
             case 't':
-                return this->_true;
+                return make_bool(1);
             case 'f':
-                return this->_false;
+                return make_bool(0);
             default:
                 std::cerr << "unknown boolean literal\n";
                 exit(1);
@@ -78,9 +78,8 @@ std::unique_ptr<scheme_object> Shell::read(std::FILE* in) {
     if (std::isdigit(c) || (c == '-' && (std::isdigit(peek(in))))) {
         if (c == '-') sign = -1;
         else std::ungetc(c, in);
-        while (std::isdigit(c = std::getc(in))) {
+        while (std::isdigit(c = std::getc(in))) 
             num = (num * 10) + (c - '0');
-        }
         num *= sign;
         if (is_delimiter(c)) {
             std::ungetc(c, in);
@@ -97,14 +96,15 @@ std::unique_ptr<scheme_object> Shell::eval(std::unique_ptr<scheme_object> expres
     return expression;
 }
 
-
 void Shell::write(std::unique_ptr<scheme_object> obj) {
     switch (obj->type) {
-        case scheme_object::BOOLEAN:
-            std::cout << "#" << is_false(obj) ? 'f': 't';
+        case scheme_object::BOOLEAN: {
+            char c = is_false(std::move(obj)) ? 'f' : 't';
+            std::cout << "#" << c;
             break;
+        }
         case scheme_object::FIXNUM:
-            std::cout << obj->data.fixnum.value;
+            std::cout << obj->fixnum;
             break;
         default:
             std::cerr << "Cannot write an unknown type\n";
@@ -113,7 +113,7 @@ void Shell::write(std::unique_ptr<scheme_object> obj) {
 }
 
 void Shell::repl() {
-    while(1) {
+    while (1) {
         std::cout << "> ";
         write(eval(read(stdin)));
         std::cout << "\n";

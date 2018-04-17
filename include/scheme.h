@@ -9,7 +9,6 @@
 
 class Shell {
 private:
-
     bool is_fixnum(std::unique_ptr<scheme_object>);
     bool is_delimiter(int c);
     bool is_boolean(std::unique_ptr<scheme_object>);
@@ -17,8 +16,8 @@ private:
 
     int peek(std::FILE* in);
 
-    std::unique_ptr<scheme_object> _false, _true;
     std::unique_ptr<scheme_object> make_fixnum(long);
+    std::unique_ptr<scheme_object> make_bool(bool);
     std::unique_ptr<scheme_object> read(std::FILE*);
     std::unique_ptr<scheme_object> eval(std::unique_ptr<scheme_object>);
 
